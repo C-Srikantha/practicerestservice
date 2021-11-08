@@ -12,29 +12,37 @@ import (
 	"rest.com/service/handler"
 )
 
+type Actor struct {
+	Id         uint   `pg:",pk"`
+	ActorName  string `pg:",notnull"`
+	ActorPhone int64  `pg:",notnull"`
+}
 type Movie struct {
-	Id        uint16 `pg:",pk"`
+	Id        uint   `pg:",pk"`
 	MovieName string `pg:",notnull"`
 	MovieLang string `pg:",notnull"`
 	MovieType string `pg:",notnull"`
+	ActorID   uint
+	Actor     *Actor `pg:"rel:has-many"`
 }
-type Cast struct {
-	Id           uint16 `pg:",fk:"`
-	ProducerName string `pg:",notnull"`
-	DirectorName string `pg:",notnull"`
-	ActorName    string `pg:",notnull"`
+type Movierelease struct {
+	Releaseyear int
+	MovieId     uint
+	Movie       *Movie `pg:"rel:has-one"`
 }
 
 //creates a table in database postpresql
 func createtable(db *pg.DB) {
 	model := []interface{}{
+		(*Actor)(nil),
 		(*Movie)(nil),
-		(*Cast)(nil),
+		(*Movierelease)(nil),
 	}
 	for _, model := range model {
 		err := db.Model(model).CreateTable(&orm.CreateTableOptions{
-			IfNotExists: true,
-			Varchar:     50,
+			IfNotExists:   true,
+			Varchar:       50,
+			FKConstraints: true,
 		})
 
 		if err != nil {
@@ -51,20 +59,23 @@ func handelrequest(db *pg.DB) {
 	mux.HandleFunc("/postdetails", func(w http.ResponseWriter, r *http.Request) { handler.Postdetails(w, r, db) }).Methods("POST")            //registers api signature and handler to the router
 	mux.HandleFunc("/deletedetails/{id}", func(w http.ResponseWriter, r *http.Request) { handler.Deletedetails(w, r, db) }).Methods("DELETE") //registers api signature and handler to the router
 	mux.HandleFunc("/updatedetails/{id}", func(w http.ResponseWriter, r *http.Request) { handler.Updatedetails(w, r, db) }).Methods("PUT")    //registers api signature and handler to the router
-	mux.HandleFunc("/getdetails/cast", func(w http.ResponseWriter, r *http.Request) { handler.Getcastdetails(w, r, db) }).Methods("GET")      //registers api signature and handler to the router
-	mux.HandleFunc("/getdetails/cast/{id}", func(w http.ResponseWriter, r *http.Request) { handler.Getacastdetails(w, r, db) }).Methods("GET")
-	mux.HandleFunc("/postdetails/cast", func(w http.ResponseWriter, r *http.Request) { handler.Postcastdetails(w, r, db) }).Methods("POST")
-	mux.HandleFunc("/updatedetails/cast/{id}", func(w http.ResponseWriter, r *http.Request) { handler.Updatecastdetails(w, r, db) }).Methods("PUT")
-
+	mux.HandleFunc("/getdetails/movie", func(w http.ResponseWriter, r *http.Request) { handler.Getmoviedetails(w, r, db) }).Methods("GET")    //registers api signature and handler to the router
+	mux.HandleFunc("/getdetails/movie/{id}", func(w http.ResponseWriter, r *http.Request) { handler.Getamoviedetails(w, r, db) }).Methods("GET")
+	mux.HandleFunc("/postdetails/movie", func(w http.ResponseWriter, r *http.Request) { handler.Postcastdetails(w, r, db) }).Methods("POST")
+	mux.HandleFunc("/updatedetails/movie/{id}", func(w http.ResponseWriter, r *http.Request) { handler.Updatecastdetails(w, r, db) }).Methods("PUT")
+	//mux.HandleFunc("/getapi", func(w http.ResponseWriter, r *http.Request) { handler.Getapidetails(w, r, db) }).Methods("GET")
 	fmt.Println(http.ListenAndServe(":8081", mux)) //creates a server and listens to the port for requests and pass the requests to route
 }
 func main() {
-	db := databasecon.Setup() //calling database connection
+	db, err := databasecon.Setup() //calling database connection
 	defer db.Close()
-	if db == nil {
+	if db == nil || err != nil {
 		fmt.Println("Connection failed!!")
 		os.Exit(1) //terminates the server
 	}
 	createtable(db)
+
+	handler.Readfile(db)
 	handelrequest(db)
+
 }
