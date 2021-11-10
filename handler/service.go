@@ -4,6 +4,7 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -28,7 +29,6 @@ type Movie struct {
 type Movierelease struct {
 	Releaseyear int
 	MovieId     uint
-	Movie       *Movie
 }
 
 //this func displays the error message
@@ -150,36 +150,46 @@ func Updatecastdetails(w http.ResponseWriter, r *http.Request, db *pg.DB) {
 }*/
 func Readfile(db *pg.DB) {
 	var detail []Actor
-	var detail1 []Movie
+	/*var detail1 []Movie
 	var detail2 []Movierelease
+
 	//reading actor csv file
 	readfile, err := os.Open("sample.csv") //open the file
 	defer readfile.Close()
 	if err != nil {
 		fmt.Println("Failed to open file")
 	}
-	csvfile, err := csv.NewReader(readfile).ReadAll()
-	temp := csvfile[1:]
-	for _, details := range temp {
-		id, _ := strconv.Atoi(details[0])       //converts string to int
-		intphone, _ := strconv.Atoi(details[2]) //
+	csvfile := csv.NewReader(readfile)
+	for {
+		file, err := csvfile.Read()
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		if err != io.EOF {
+			break
+		}
+		id, _ := strconv.Atoi(file[0])       //converts string to int
+		intphone, _ := strconv.Atoi(file[2]) //
 
 		det := Actor{
 			Id:         uint(id),
-			ActorName:  details[1],
+			ActorName:  file[1],
 			ActorPhone: int64(intphone),
 		}
 		detail = append(detail, det)
 	}
+
 	//reading movie csv file
 	readfile1, err := os.Open("movie.csv")
 	defer readfile1.Close()
 	if err != nil {
 		fmt.Println("Failed to open file")
+		return
 	}
 	csvfile1, err := csv.NewReader(readfile1).ReadAll()
-	temp1 := csvfile1[1:]
-	for _, details := range temp1 {
+	for _, details := range csvfile1 {
+
 		id, _ := strconv.Atoi(details[3])
 		det := Movie{
 			MovieName: details[0],
@@ -196,8 +206,9 @@ func Readfile(db *pg.DB) {
 		fmt.Println("Failed to open file")
 	}
 	csvfile2, err := csv.NewReader(readfile2).ReadAll()
-	temp2 := csvfile2[1:]
-	for _, details := range temp2 {
+
+	for _, details := range csvfile2 {
+
 		year, _ := strconv.Atoi(details[0])
 		id, _ := strconv.Atoi(details[1])
 		det := Movierelease{
@@ -206,12 +217,59 @@ func Readfile(db *pg.DB) {
 		}
 		detail2 = append(detail2, det)
 	}
-
-	_, err = db.Model(&detail).Insert() //inserts into table Actor
+	temp := detail[1:]
+	_, err = db.Model(&temp).Insert()
 	error(err)
 	_, err = db.Model(&detail1).Insert() //inserts into table Movie
 	error(err)
 	_, err = db.Model(&detail2).Insert() //inserts into table Release
+	error(err)*/
+
+	m := map[string]int{"id": 0, "actorname": 0, "actorphone": 0}
+
+	csfile, err := os.Open("sample.csv")
+	if err != nil {
+		fmt.Print("failed to open file")
+		return
+	}
+	//var count int=0
+
+	//fmt.Print(len(file))
+
+	csvfile := csv.NewReader(csfile)
+	for {
+		var flag int = 0
+		file, err := csvfile.Read()
+		if err != nil {
+			fmt.Println(err)
+		}
+		if err == io.EOF {
+			break
+		}
+		if flag == 0 {
+			for j := 0; j < len(file); j++ {
+				for k := range m {
+					if k == file[j] {
+						m[k] = j
+					}
+
+				}
+			}
+			flag = 1
+		}
+		//fmt.Println(m["id"], m["actorname"], m["actorphone"])
+		id, _ := strconv.Atoi(file[m["id"]])               //converts string to int
+		intphone, _ := strconv.Atoi(file[m["actorphone"]]) //
+
+		det := Actor{
+			Id:         uint(id),
+			ActorName:  file[m["actorname"]],
+			ActorPhone: int64(intphone),
+		}
+		detail = append(detail, det)
+	}
+	temp := detail[1:]
+	_, err = db.Model(&temp).Insert()
 	error(err)
 
 }

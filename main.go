@@ -76,6 +76,6 @@ func main() {
 	createtable(db)
 
 	handler.Readfile(db)
-	handelrequest(db)
+	//handelrequest(db)
 
 }
